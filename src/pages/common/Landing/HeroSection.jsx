@@ -83,14 +83,14 @@ const HeroSection = () => {
             className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-up"
             style={{ animationDelay: '2.2s' }}
           >
-            <Button 
+            {/* <Button 
               onClick={handleGetStartedClick} 
               size="lg" 
               className="text-lg px-8 py-3 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 animate-bounce-subtle"
             >
               Get Started
               <ArrowRight className="w-5 h-5 ml-2"/>
-            </Button>
+            </Button> */}
             <Button 
               variant="outline" 
               size="lg" 
