@@ -5,6 +5,9 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    historyApiFallback: true,
+  },
   base: process.env.VITE_BASE_PATH || "/TrekBIZ-Frontend",
   resolve: {
     alias: {
@@ -15,3 +18,10 @@ export default defineConfig({
     outDir: "dist", // 👈 revert to default
   },
 });
+
+// export default defineConfig({
+//   plugins: [react()],
+//   server: {
+//     historyApiFallback: true,
+//   },
+// });
