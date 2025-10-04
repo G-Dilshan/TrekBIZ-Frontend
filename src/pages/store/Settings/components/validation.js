@@ -34,6 +34,7 @@ export const StoreSettingsValidationSchema = Yup.object().shape({
 
 // Currency options
 export const CURRENCY_OPTIONS = [
+  { value: "LKR", label: "LKR - Lankan Rupee" },
   { value: "USD", label: "USD - US Dollar" },
   { value: "EUR", label: "EUR - Euro" },
   { value: "GBP", label: "GBP - British Pound" },

@@ -81,9 +81,9 @@ export default function Settings() {
         storePhone: store.contact?.phone || "",
         storeAddress: store.contact?.address || "",
         storeDescription: store.description || "",
-        currency: store.currency || "USD",
+        currency: store.currency || "LKR",
         taxRate: store.taxRate?.toString() || "0",
-        timezone: store.timezone || "America/New_York",
+        timezone: store.timezone || "Europe/London",
         dateFormat: store.dateFormat || "MM/DD/YYYY",
         receiptFooter: store.receiptFooter || "",
       });
