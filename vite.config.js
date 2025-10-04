@@ -8,7 +8,7 @@ export default defineConfig({
   server: {
     historyApiFallback: true,
   },
-  // base: process.env.VITE_BASE_PATH || "/TrekBIZ-Frontend",
+  base: process.env.VITE_BASE_PATH || "/TrekBIZ-Frontend",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -18,10 +18,3 @@ export default defineConfig({
     outDir: "dist", // 👈 revert to default
   },
 });
-
-// export default defineConfig({
-//   plugins: [react()],
-//   server: {
-//     historyApiFallback: true,
-//   },
-// });
