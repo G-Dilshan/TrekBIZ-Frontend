@@ -84,7 +84,7 @@ const InventoryFormDialog = ({
                     <SelectItem value="all">All Products</SelectItem>
                     {products.map((product) => (
                       <SelectItem key={product.id} value={product.id}>
-                        {product.sku}
+                        {product.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
