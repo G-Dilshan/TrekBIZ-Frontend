@@ -9,15 +9,29 @@ import { toast } from '@/components/ui/use-toast';
 const ProductTable = ({ products, loading, onEdit, onView }) => {
   const dispatch = useDispatch();
 
+  // const handleDeleteProduct = async (id) => {
+  //   try {
+  //     const token = localStorage.getItem("jwt");
+  //     await dispatch(deleteProduct({ id, token })).unwrap();
+  //     toast({ title: "Success", description: "Product deleted successfully" });
+  //   } catch (err) {
+  //     toast({ title: "Error", description: err || "Failed to delete product", variant: "destructive" });
+  //   }
+  // };
+
   const handleDeleteProduct = async (id) => {
-    try {
-      const token = localStorage.getItem("jwt");
-      await dispatch(deleteProduct({ id, token })).unwrap();
-      toast({ title: "Success", description: "Product deleted successfully" });
-    } catch (err) {
-      toast({ title: "Error", description: err || "Failed to delete product", variant: "destructive" });
-    }
+  try {
+    await dispatch(deleteProduct(id)).unwrap();   // ✅ only id
+    toast({ title: "Success", description: "Product deleted successfully" });
+  } catch (err) {
+    toast({ 
+      title: "Error", 
+      description: err || "Failed to delete product", 
+      variant: "destructive" 
+    });
+  }
   };
+
 
   if (loading) {
     return (
