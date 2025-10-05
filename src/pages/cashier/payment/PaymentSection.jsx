@@ -62,7 +62,7 @@ const PaymentSection = ({ setShowPaymentDialog }) => {
     });
   };
   return (
-    <div className="flex-1 p-4 flex flex-col justify-end">
+    <div className="flex-1 p-4 flex flex-col justify-start">
       <div className="space-y-4">
         <div className="text-center">
           <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">

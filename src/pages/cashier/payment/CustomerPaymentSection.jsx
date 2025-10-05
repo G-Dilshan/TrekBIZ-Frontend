@@ -12,16 +12,23 @@ const CustomerPaymentSection = ({ setShowCustomerDialog, setShowPaymentDialog })
   return (
     <div className="w-1/5 flex flex-col bg-card overflow-y-auto">
       {/* Customer Section */}
-      <CustomerSection setShowCustomerDialog={setShowCustomerDialog} />
+      {/* <CustomerSection setShowCustomerDialog={setShowCustomerDialog} /> */}
+
+      {/* Payment Section */}
+      <PaymentSection setShowPaymentDialog={setShowPaymentDialog}/>
 
       {/* Discount Section */}
       <DiscountSection />
 
-      {/* Note Section */}
-      <NoteSection />
+      {/* Customer Section */}
+      <CustomerSection setShowCustomerDialog={setShowCustomerDialog} />
 
-      {/* Payment Section */}
-     <PaymentSection setShowPaymentDialog={setShowPaymentDialog}/>
+      {/* Discount Section
+      <DiscountSection /> */}
+
+      {/* Note Section */}
+      {/* <NoteSection /> */}
+
     </div>
   );
 };
