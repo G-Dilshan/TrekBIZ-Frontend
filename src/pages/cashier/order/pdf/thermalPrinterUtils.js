@@ -1004,7 +1004,6 @@ const generateReceiptHTML = (order, paidAmount, balance) => {
               </div>
               ${itemDiscount > 0 ? `
                 <div class="item-discount-row">
-                  <span>Was: ${qty} x Rs. ${markedPrice.toFixed(2)}</span>
                   <span>Saved: Rs. ${itemDiscount.toFixed(2)}</span>
                 </div>
               ` : ''}
