@@ -95,7 +95,7 @@ const CartItem = ({item, updateCartItemQuantity, removeFromCart}) => {
       updateCartItemQuantity(item.id, 1);
     } else {
       // Update with the valid decimal value
-      const roundedValue = Math.round(numValue * 100) / 100; // Round to 2 decimals
+      const roundedValue = Math.round(numValue * 1000) / 1000; // Round to 2 decimals
       setQuantity(roundedValue.toString());
       updateCartItemQuantity(item.id, roundedValue);
     }
@@ -131,7 +131,7 @@ const CartItem = ({item, updateCartItemQuantity, removeFromCart}) => {
             <div className="text-right">
               <p className="font-medium">Rs. {item.sellingPrice}</p>
               <p className="text-sm font-bold text-green-600">
-                Rs. {(item.sellingPrice * item.quantity).toFixed(2)}
+                Rs. {(item.sellingPrice.toFixed(3) * item.quantity.toFixed(3)).toFixed(3)}
               </p>
             </div>
             <Button
