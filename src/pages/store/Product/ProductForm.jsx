@@ -289,7 +289,7 @@ const ProductForm = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label htmlFor="mrp" className="block text-sm font-medium">
-                MRP
+                Buying Price
               </label>
               <Field
                 as={Input}

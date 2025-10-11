@@ -28,7 +28,6 @@ const InventoryFilters = ({
             className=""
             value={searchTerm}
             onChange={onSearch}
-           
           />
         </div>
         <div className="relative">

@@ -47,7 +47,7 @@ const CustomerPaymentSection = ({ setShowCustomerDialog, setShowPaymentDialog, s
         setBalance={setBalance}
       />
 
-      <DiscountSection />
+      {/* <DiscountSection /> */}
 
       <CustomerSection setShowCustomerDialog={setShowCustomerDialog} />
     </div>

@@ -54,7 +54,7 @@ export default function Sales() {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'SLR',
+      currency: 'LKR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount || 0);
@@ -245,7 +245,7 @@ export default function Sales() {
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(value) => `₹${value}`}
+                      tickFormatter={(value) => `LKR${value}`}
                     />
                     <ChartTooltip
                       content={({ active, payload }) => (
@@ -303,7 +303,7 @@ export default function Sales() {
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
-                      tickFormatter={(value) => `₹${value}`}
+                      tickFormatter={(value) => `LKR${value}`}
                     />
                     <ChartTooltip
                       content={({ active, payload }) => (

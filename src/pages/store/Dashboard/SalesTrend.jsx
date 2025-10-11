@@ -60,7 +60,7 @@ const SalesTrend = () => {
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
-      currency: "INR",
+      currency: "LKR",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value);
@@ -127,7 +127,7 @@ const SalesTrend = () => {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => `₹${value}`}
+                tickFormatter={(value) => `LKR${value}`}
               />
               <Tooltip
                 formatter={(value) => [formatCurrency(value), "Sales"]}
