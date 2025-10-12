@@ -72,9 +72,9 @@ export default function Branches() {
         )}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-emerald-600 hover:bg-emerald-700">
+            {/* <Button className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-2 h-4 w-4" /> Add Branch
-            </Button>
+            </Button> */}
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>

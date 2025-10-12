@@ -83,7 +83,7 @@ export default function Settings() {
         storeDescription: store.description || "",
         currency: store.currency || "LKR",
         taxRate: store.taxRate?.toString() || "0",
-        timezone: store.timezone || "Europe/London",
+        timezone: store.timezone || "Asia/Colombo",
         dateFormat: store.dateFormat || "MM/DD/YYYY",
         receiptFooter: store.receiptFooter || "",
       });
