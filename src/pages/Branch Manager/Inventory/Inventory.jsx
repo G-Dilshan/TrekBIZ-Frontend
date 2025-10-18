@@ -43,15 +43,19 @@ const Inventory = () => {
     };
   });
 
-  // Filter inventory based on search and filters
-  const filteredRows = inventoryRows.filter((row) => {
-    const matchesSearch =
-      // row?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row?.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      category === "all" || !category || row.category === category;
-    return matchesSearch && matchesCategory;
-  });
+    // Filter inventory based on search and filters
+const filteredRows = inventoryRows.filter((row) => {
+  const search = searchTerm.toLowerCase().trim();
+
+  const matchesSearch =
+    String(row?.sku || "").toLowerCase().includes(search) ||
+    String(row?.name || "").toLowerCase().includes(search);
+
+  const matchesCategory =
+    category === "all" || !category || row.category === category;
+
+  return matchesSearch && matchesCategory;
+});
 
   // Add Inventory
   const handleAddInventory = async () => {
