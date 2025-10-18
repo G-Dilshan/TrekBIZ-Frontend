@@ -122,6 +122,7 @@
 // export default InventoryFormDialog;
 
 
+
 import React, { useState, useMemo } from "react";
 import {
   Dialog,
@@ -207,14 +208,14 @@ const InventoryFormDialog = ({
                   <SelectValue placeholder="Select a Product" />
                 </SelectTrigger>
                 <SelectContent>
-                  <div className="flex items-center gap-2 px-2 py-2 border-b sticky top-0 bg-white">
+                  <div className="flex items-center gap-2 px-2 py-2 border-b sticky top-0 bg-black">
                     <Search className="h-4 w-4 text-gray-500" />
                     <input
                       type="text"
                       placeholder="Search by SKU..."
                       value={searchSku}
                       onChange={(e) => setSearchSku(e.target.value)}
-                      className="flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 "
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     />
@@ -249,13 +250,19 @@ const InventoryFormDialog = ({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={onSubmit}>
-            {isEdit ? "Update Inventory" : "Add Inventory"}
-          </Button>
-        </DialogFooter>
+  <Button variant="outline" onClick={() => onOpenChange(false)}>
+    Cancel
+  </Button>
+  <Button
+    onClick={() => {
+      onSubmit();
+      setSearchSku(""); //  clear search after submit
+    }}
+  >
+    {isEdit ? "Update Inventory" : "Add Inventory"}
+  </Button>
+</DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
