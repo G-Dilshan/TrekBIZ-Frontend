@@ -727,19 +727,18 @@ export const handlePrintThermalReceipt = async (order, toast, paidAmount = null,
     document.body.appendChild(iframe);
 
     const receiptHTML = generateReceiptHTML(order, paidAmount, balance);
-    
     const iframeDoc = iframe.contentWindow.document;
     iframeDoc.open();
     iframeDoc.write(receiptHTML);
     iframeDoc.close();
 
-    setTimeout(() => {
+    // Wait for the logo image to load before printing
+    const logo = iframe.contentWindow.document.querySelector('.store-logo');
+    const printWhenReady = () => {
       iframe.contentWindow.focus();
       iframe.contentWindow.print();
-      
       setTimeout(() => {
         document.body.removeChild(iframe);
-        
         if (toast) {
           toast({
             title: "Receipt Printed",
@@ -747,7 +746,15 @@ export const handlePrintThermalReceipt = async (order, toast, paidAmount = null,
           });
         }
       }, 1000);
-    }, 250);
+    };
+
+    if (logo && !logo.complete) {
+      logo.onload = printWhenReady;
+      logo.onerror = printWhenReady; // fallback if image fails to load
+    } else {
+      // If no logo or already loaded
+      setTimeout(printWhenReady, 300);
+    }
 
   } catch (error) {
     console.error("Error printing receipt:", error);
@@ -760,6 +767,7 @@ export const handlePrintThermalReceipt = async (order, toast, paidAmount = null,
     }
   }
 };
+
 
 const generateReceiptHTML = (order, paidAmount, balance) => {
   const receiptDate = formatDate(order.createdAt);
