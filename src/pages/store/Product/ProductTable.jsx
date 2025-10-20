@@ -150,14 +150,21 @@ const ProductTable = ({ products, loading, onEdit, onView }) => {
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
-                <Button
+                
+
+
+                {/* <Button
                   variant="outline"
                   size="sm"
                   className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
                   onClick={() => handleDeleteProduct(product.id)}
                 >
                   <Trash2 className="h-4 w-4" />
-                </Button>
+                </Button> */}
+
+
+
+
               </div>
             </TableCell>
           </TableRow>
