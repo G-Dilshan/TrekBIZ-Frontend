@@ -461,6 +461,7 @@ import { useToast } from "../../../components/ui/use-toast";
 import { createOrder } from "../../../Redux Toolkit/features/order/orderThunks";
 import { paymentMethods } from "./data";
 import { CreditCard, Banknote, Smartphone, Loader2 } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
 
 // Icon mapping for better maintainability
 const paymentIcons = {
@@ -476,7 +477,8 @@ const PaymentDialog = ({
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
-  
+  const [retryPending, setRetryPending] = useState(false);
+
   const paymentMethod = useSelector(selectPaymentMethod);
   const cart = useSelector(selectCartItems);
   const branch = useSelector((state) => state.branch);
@@ -484,20 +486,21 @@ const PaymentDialog = ({
   const selectedCustomer = useSelector(selectSelectedCustomer);
   const total = useSelector(selectTotal);
   const note = useSelector(selectNote);
-  
+
   const { toast } = useToast();
   const dispatch = useDispatch();
   const buttonRefs = useRef([]);
+  const lastOrderRef = useRef(null);
 
   // Auto-select CASH when dialog opens
   useEffect(() => {
     if (showPaymentDialog) {
-      dispatch(setPaymentMethod('CASH'));
+      dispatch(setPaymentMethod("CASH"));
       setFocusedIndex(0);
     }
   }, [showPaymentDialog, dispatch]);
 
-  // Handle keyboard navigation
+  // Keyboard navigation
   useEffect(() => {
     if (!showPaymentDialog) return;
 
@@ -505,7 +508,7 @@ const PaymentDialog = ({
       if (isProcessing) return;
 
       switch (e.key) {
-        case 'ArrowDown':
+        case "ArrowDown":
           e.preventDefault();
           setFocusedIndex((prev) => {
             const newIndex = (prev + 1) % paymentMethods.length;
@@ -514,7 +517,7 @@ const PaymentDialog = ({
           });
           break;
 
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault();
           setFocusedIndex((prev) => {
             const newIndex = prev === 0 ? paymentMethods.length - 1 : prev - 1;
@@ -523,12 +526,12 @@ const PaymentDialog = ({
           });
           break;
 
-        case 'Enter':
+        case "Enter":
           e.preventDefault();
-          processPayment();
+          if (!isProcessing) processPayment();
           break;
 
-        case 'Escape':
+        case "Escape":
           e.preventDefault();
           handleCancel();
           break;
@@ -538,22 +541,37 @@ const PaymentDialog = ({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showPaymentDialog, isProcessing, focusedIndex, paymentMethod]);
 
-  // Focus the selected button
+  // Focus selected payment button
   useEffect(() => {
     if (buttonRefs.current[focusedIndex] && showPaymentDialog) {
       buttonRefs.current[focusedIndex]?.focus();
     }
   }, [focusedIndex, showPaymentDialog]);
 
+  // Retry pending order if internet reconnects
+  useEffect(() => {
+    const handleOnline = async () => {
+      if (retryPending) {
+        toast({
+          title: "Reconnected",
+          description: "Retrying pending order...",
+        });
+        await processPayment();
+      }
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [retryPending]);
+
   const validateOrder = () => {
     if (cart.length === 0) {
       toast({
         title: "Empty Cart",
-        description: "Please add items to cart before processing payment",
+        description: "Please add items before processing payment",
         variant: "destructive",
       });
       return false;
@@ -562,7 +580,7 @@ const PaymentDialog = ({
     if (!selectedCustomer) {
       toast({
         title: "Customer Required",
-        description: "Please select a customer before processing payment",
+        description: "Please select a customer before proceeding",
         variant: "destructive",
       });
       return false;
@@ -571,7 +589,7 @@ const PaymentDialog = ({
     if (!paymentMethod) {
       toast({
         title: "Payment Method Required",
-        description: "Please select a payment method",
+        description: "Please choose a payment method",
         variant: "destructive",
       });
       return false;
@@ -580,48 +598,85 @@ const PaymentDialog = ({
     return true;
   };
 
+  // Main Process Payment
   const processPayment = async () => {
+    if (isProcessing) return;
     if (!validateOrder()) return;
+
+    // Generate or reuse unique local order ID
+    let tempOrderId = localStorage.getItem("tempOrderId");
+    if (!tempOrderId) {
+      tempOrderId = uuidv4();
+      localStorage.setItem("tempOrderId", tempOrderId);
+    }
+
+    const orderData = {
+      tempId: tempOrderId,
+      totalAmount: total,
+      branchId: branch.id,
+      cashierId: userProfile.id,
+      customer: selectedCustomer,
+      items: cart.map((item) => ({
+        productId: item.id,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.price * item.quantity,
+      })),
+      paymentType: paymentMethod,
+      note: note || "",
+    };
+
+    // Prevent duplicate frontend order
+    const orderKey = JSON.stringify(orderData);
+    if (lastOrderRef.current === orderKey) {
+      toast({
+        title: "Duplicate Order Prevented",
+        description: "This order was already submitted recently.",
+        variant: "destructive",
+      });
+      return;
+    }
+    lastOrderRef.current = orderKey;
 
     setIsProcessing(true);
 
     try {
-      const orderData = {
-        totalAmount: total,
-        branchId: branch.id,
-        cashierId: userProfile.id,
-        customer: selectedCustomer,
-        items: cart.map((item) => ({
-          productId: item.id,
-          quantity: item.quantity,
-          price: item.price,
-          total: item.price * item.quantity,
-        })),
-        paymentType: paymentMethod,
-        note: note || "",
-      };
-
-      console.log("Creating order:", orderData);
-
       const createdOrder = await dispatch(createOrder(orderData)).unwrap();
-      dispatch(setCurrentOrder(createdOrder));
 
+      // Clear temporary ID after success
+      localStorage.removeItem("tempOrderId");
+      setRetryPending(false);
+
+      dispatch(setCurrentOrder(createdOrder));
       setShowPaymentDialog(false);
       setShowReceiptDialog(true);
 
       toast({
         title: "Order Created Successfully",
-        description: `Order #${createdOrder.id} created and payment processed`,
+        description: `Order #${createdOrder.id} created.`,
       });
     } catch (error) {
-      console.error("Failed to create order:", error);
-      toast({
-        title: "Order Creation Failed",
-        description: error?.message || "Failed to create order. Please try again.",
-        variant: "destructive",
-      });
+      console.error("Order creation failed:", error);
+
+      if (!navigator.onLine) {
+        // Save pending order for retry
+        setRetryPending(true);
+        toast({
+          title: "Offline Mode",
+          description: "Connection lost. Will retry automatically when online.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Order Creation Failed",
+          description:
+            error?.message || "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsProcessing(false);
+      setTimeout(() => (lastOrderRef.current = null), 3000);
     }
   };
 
@@ -644,7 +699,7 @@ const PaymentDialog = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Total Amount Display */}
+          {/* Total Amount */}
           <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
             <div className="text-4xl font-bold text-green-600">
               Rs. {total.toFixed(2)}
@@ -652,30 +707,31 @@ const PaymentDialog = ({
             <p className="text-sm text-gray-600 mt-1">Total Amount</p>
           </div>
 
-          {/* Customer Info */}
+          {/* 👤 Customer Info */}
           {selectedCustomer && (
             <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
-              <span className="font-medium">Customer:</span> {selectedCustomer.name || selectedCustomer.email}
+              <span className="font-medium">Customer:</span>{" "}
+              {selectedCustomer.name || selectedCustomer.email}
             </div>
           )}
 
-          {/* Payment Methods */}
+          {/* Payment Options */}
           <div className="space-y-2">
             <p className="text-sm font-medium text-gray-700 mb-3">
-              Choose Payment Method (Use ↑↓ arrows, Enter to confirm)
+              Choose Payment Method (↑↓ arrows, Enter to confirm)
             </p>
             {paymentMethods.map((method, index) => {
               const Icon = paymentIcons[method.key];
               const isSelected = paymentMethod === method.key;
               const isFocused = focusedIndex === index;
-              
+
               return (
                 <Button
                   key={method.key}
                   ref={(el) => (buttonRefs.current[index] = el)}
                   variant={isSelected ? "default" : "outline"}
                   className={`w-full justify-start gap-3 h-12 text-base transition-all ${
-                    isFocused ? 'ring-2 ring-offset-2 ring-primary' : ''
+                    isFocused ? "ring-2 ring-offset-2 ring-primary" : ""
                   }`}
                   onClick={() => handlePaymentMethod(method.key, index)}
                   disabled={isProcessing}
@@ -693,19 +749,21 @@ const PaymentDialog = ({
             })}
           </div>
 
-          {/* Keyboard Shortcuts Help */}
+          {/* Keyboard Help */}
           <div className="text-xs text-gray-500 text-center space-y-1">
-            <p>Press <kbd className="px-2 py-1 bg-gray-100 rounded">Enter</kbd> to complete payment</p>
-            <p>Press <kbd className="px-2 py-1 bg-gray-100 rounded">Esc</kbd> to cancel</p>
+            <p>
+              Press <kbd className="px-2 py-1 bg-gray-100 rounded">Enter</kbd> to
+              complete payment
+            </p>
+            <p>
+              Press <kbd className="px-2 py-1 bg-gray-100 rounded">Esc</kbd> to
+              cancel
+            </p>
           </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            disabled={isProcessing}
-          >
+          <Button variant="outline" onClick={handleCancel} disabled={isProcessing}>
             Cancel (Esc)
           </Button>
           <Button
