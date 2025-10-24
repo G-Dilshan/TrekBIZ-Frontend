@@ -48,21 +48,22 @@ export const deleteInventory = createAsyncThunk(
   'inventory/delete',
   async (id, { rejectWithValue }) => {
     const token = localStorage.getItem('jwt');
-     const config = {
-       headers: {
-         Authorization: `Bearer ${token}`,
-       },
-     };
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
     try {
       await api.delete(`/api/inventories/${id}`, config);
       console.log('deleteInventory fulfilled:', id);
-      return id;
+      return id; // Return the deleted ID for the reducer to remove it from state
     } catch (err) {
       console.error('deleteInventory rejected:', err.response?.data?.message || err);
       return rejectWithValue(err.response?.data?.message || 'Failed to delete inventory');
     }
   }
 );
+
 
 // 🔹 Get inventory by ID
 export const getInventoryById = createAsyncThunk(
