@@ -10,9 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
-import { EyeIcon } from "lucide-react";
-import { PrinterIcon } from "lucide-react";
-import { RotateCcwIcon } from "lucide-react";
+import { EyeIcon, PrinterIcon, RotateCcwIcon } from "lucide-react";
 
 const OrderTable = ({
   orders,
@@ -20,6 +18,9 @@ const OrderTable = ({
   handlePrintInvoice,
   handleInitiateReturn,
 }) => {
+  // Sort orders in descending order by id
+  const sortedOrders = [...orders].sort((a, b) => b.id - a.id);
+
   return (
     <Table>
       <TableHeader>
@@ -34,7 +35,7 @@ const OrderTable = ({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {orders.map((order) => (
+        {sortedOrders.map((order) => (
           <TableRow key={order.id}>
             <TableCell className="font-medium">{order.id}</TableCell>
             <TableCell>{formatDate(order.createdAt)}</TableCell>
@@ -42,7 +43,7 @@ const OrderTable = ({
               {order.customer?.fullName || "Walk-in Customer"}
             </TableCell>
             <TableCell>Rs. {order.totalAmount?.toFixed(2) || "0.00"}</TableCell>
-            <TableCell>{(order.paymentType)}</TableCell>
+            <TableCell>{order.paymentType}</TableCell>
             <TableCell>
               <Badge
                 variant={getStatusBadgeVariant(order.status)}

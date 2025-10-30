@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,6 @@ import {
 import {
   SearchIcon,
   PrinterIcon,
-  EyeIcon,
-  RotateCcwIcon,
   CalendarIcon,
   Loader2,
   RefreshCw,
@@ -45,14 +43,13 @@ const OrderHistoryPage = () => {
   const [showOrderDetailsDialog, setShowOrderDetailsDialog] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  // Fetch orders when component mounts
+  // Fetch orders on mount
   useEffect(() => {
     if (userProfile?.id) {
       dispatch(getOrdersByCashier(userProfile.id));
     }
   }, [dispatch, userProfile]);
 
-  // Show error toast if orders fail to load
   useEffect(() => {
     if (error) {
       toast({
@@ -63,12 +60,49 @@ const OrderHistoryPage = () => {
     }
   }, [error, toast]);
 
-  // Get current date for filtering
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const weekStart = new Date(today);
   weekStart.setDate(today.getDate() - today.getDay());
+
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  // Filter orders
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      // Filter by search
+      if (
+        searchTerm &&
+        !(
+          order.id.toString().includes(searchTerm) ||
+          order.customerName?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      ) {
+        return false;
+      }
+
+      // Filter by date
+      const orderDate = new Date(order.createdAt);
+      orderDate.setHours(0, 0, 0, 0);
+
+      switch (dateFilter) {
+        case "today":
+          return orderDate.getTime() === today.getTime();
+        case "week":
+          return orderDate >= weekStart && orderDate <= today;
+        case "month":
+          return orderDate >= monthStart && orderDate <= today;
+        case "custom":
+          if (!customDateRange.start || !customDateRange.end) return true;
+          const start = new Date(customDateRange.start);
+          const end = new Date(customDateRange.end);
+          return orderDate >= start && orderDate <= end;
+        default:
+          return true;
+      }
+    });
+  }, [orders, searchTerm, dateFilter, customDateRange]);
 
   const handleViewOrder = (order) => {
     setSelectedOrder(order);
@@ -82,15 +116,6 @@ const OrderHistoryPage = () => {
     });
   };
 
-  const handleInitiateReturn = (order) => {
-    // In a real app, this would navigate to the return page with the order pre-selected
-    toast({
-      title: "Initiating Return",
-      description: `Navigating to returns page for order ${order.id}`,
-    });
-  };
-
-  
   const handleDownloadPDF = async () => {
     await handleDownloadOrderPDF(selectedOrder, toast);
   };
@@ -103,6 +128,12 @@ const OrderHistoryPage = () => {
         description: "Orders are being refreshed...",
       });
     }
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setDateFilter("today");
+    setCustomDateRange({ start: "", end: "" });
   };
 
   return (
@@ -136,7 +167,7 @@ const OrderHistoryPage = () => {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               variant={dateFilter === "today" ? "default" : "outline"}
               onClick={() => setDateFilter("today")}
@@ -161,6 +192,9 @@ const OrderHistoryPage = () => {
             >
               <CalendarIcon className="h-4 w-4 mr-2" />
               Custom
+            </Button>
+            <Button variant="outline" onClick={handleClearFilters}>
+              Clear All
             </Button>
           </div>
         </div>
@@ -195,12 +229,6 @@ const OrderHistoryPage = () => {
                 }
               />
             </div>
-            <Button
-              variant="outline"
-              onClick={() => setCustomDateRange({ start: "", end: "" })}
-            >
-              Clear
-            </Button>
           </div>
         )}
       </div>
@@ -211,10 +239,9 @@ const OrderHistoryPage = () => {
             <Loader2 className="animate-spin h-16 w-16 text-primary" />
             <p className="mt-4">Loading orders...</p>
           </div>
-        ) : orders.length > 0 ? (
+        ) : filteredOrders.length > 0 ? (
           <OrderTable
-            orders={orders}
-            handleInitiateReturn={handleInitiateReturn}
+            orders={filteredOrders}
             handlePrintInvoice={handlePrintInvoice}
             handleViewOrder={handleViewOrder}
           />
@@ -238,7 +265,6 @@ const OrderHistoryPage = () => {
               <DialogTitle>Order Details - Invoice</DialogTitle>
             </DialogHeader>
             <OrderDetails selectedOrder={selectedOrder} />
-
             <DialogFooter className="gap-2 sm:gap-0 space-x-3">
               <Button variant="outline" onClick={handleDownloadPDF}>
                 <Download className="h-4 w-4 mr-2" />
@@ -251,7 +277,6 @@ const OrderHistoryPage = () => {
                 <PrinterIcon className="h-4 w-4 mr-2" />
                 Print Invoice
               </Button>
-             
             </DialogFooter>
           </DialogContent>
         )}
