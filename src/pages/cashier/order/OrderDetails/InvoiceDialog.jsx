@@ -73,7 +73,7 @@ const InvoiceDialog = ({ showInvoiceDialog, setShowInvoiceDialog, paidAmount, ba
       description: "You can now start a new order",
     });
 
-    window.location.reload();
+    //window.location.reload();
   };
 
   // Handle Enter key press
