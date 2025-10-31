@@ -14,9 +14,6 @@ import { clearSearchResults } from "@/Redux Toolkit/features/product/productSlic
 import { addToCart } from "../../../Redux Toolkit/features/cart/cartSlice";
 import { getInventoryByBranch } from "../../../Redux Toolkit/features/inventory/inventoryThunks";
 
-// 🆕 If your order slice exists, import it to watch for payment success
-// import { resetPaymentStatus } from "@/Redux Toolkit/features/order/orderSlice";
-
 const ProductSection = ({ searchInputRef }) => {
   const dispatch = useDispatch();
   const { branch } = useSelector((state) => state.branch);
@@ -109,9 +106,22 @@ const ProductSection = ({ searchInputRef }) => {
     }
   }, [paymentSuccess, branch, dispatch, toast]);
 
-  // ✅ Barcode parser
+  // ✅ Enhanced barcode parser with 4-digit support
   const parseScaleBarcode = (barcode) => {
     const cleanBarcode = barcode.trim();
+    
+    // 🆕 4-digit product code (simple SKU)
+    if (cleanBarcode.length === 4 && /^\d+$/.test(cleanBarcode)) {
+      return {
+        canParseAsScale: true,
+        productCode: cleanBarcode,
+        weight: 1, // Default quantity for 4-digit codes
+        rawBarcode: cleanBarcode,
+        isFourDigitCode: true
+      };
+    }
+    
+    // Existing 10-digit scale barcode
     if (cleanBarcode.length === 10 && /^\d+$/.test(cleanBarcode)) {
       const productCode = cleanBarcode.substring(0, 5);
       const weightValue = cleanBarcode.substring(5);
@@ -125,6 +135,8 @@ const ProductSection = ({ searchInputRef }) => {
         };
       }
     }
+    
+    // Existing 13-digit scale barcode
     if (cleanBarcode.length === 13 && cleanBarcode.startsWith("2")) {
       const productCode = cleanBarcode.substring(2, 7);
       const weightValue = cleanBarcode.substring(7, 12);
@@ -138,16 +150,22 @@ const ProductSection = ({ searchInputRef }) => {
         };
       }
     }
-    return { canParseAsScale: false, productCode: cleanBarcode, weight: null };
+    
+    return { 
+      canParseAsScale: false, 
+      productCode: cleanBarcode, 
+      weight: null 
+    };
   };
 
-  // ✅ Barcode search
+  // ✅ Enhanced barcode search with 4-digit support
   const handleBarcodeSearch = useCallback(
     async (barcode) => {
       if (!barcode.trim() || !branch?.storeId || !localStorage.getItem("jwt"))
         return;
 
       try {
+        // First try exact barcode match
         const fullBarcodeResult = await dispatch(
           searchProducts({ query: barcode.trim(), storeId: branch.storeId })
         ).unwrap();
@@ -166,7 +184,9 @@ const ProductSection = ({ searchInputRef }) => {
           return;
         }
 
+        // Try parsing as scale barcode or 4-digit code
         const parsedBarcode = parseScaleBarcode(barcode);
+        
         if (parsedBarcode.canParseAsScale) {
           const scaleResult = await dispatch(
             searchProducts({
@@ -177,19 +197,41 @@ const ProductSection = ({ searchInputRef }) => {
 
           if (scaleResult?.length === 1) {
             const product = scaleResult[0];
-            const productWithWeight = {
-              ...product,
-              scannedWeight: parsedBarcode.weight,
-              quantity: parsedBarcode.weight,
-              isWeightedItem: true,
-            };
-            dispatch(addToCart(productWithWeight));
+            
+            // 🆕 Handle 4-digit code differently
+            if (parsedBarcode.isFourDigitCode) {
+              // For 4-digit codes, add as regular product (quantity 1)
+              dispatch(addToCart(product));
+              toast({
+                title: "Added to cart",
+                description: `${product.name} (1 unit) added to cart`,
+                duration: 1500,
+              });
+            } else {
+              // For scale barcodes, add with weight
+              const productWithWeight = {
+                ...product,
+                scannedWeight: parsedBarcode.weight,
+                quantity: parsedBarcode.weight,
+                isWeightedItem: true,
+              };
+              dispatch(addToCart(productWithWeight));
+              toast({
+                title: "Added to cart",
+                description: `${product.name} (${parsedBarcode.weight.toFixed(
+                  3
+                )} kg) added to cart`,
+                duration: 2000,
+              });
+            }
+          } else if (scaleResult?.length > 1) {
+            // Multiple products found with same code - show selection or take first
+            const product = scaleResult[0];
+            dispatch(addToCart(product));
             toast({
               title: "Added to cart",
-              description: `${product.name} (${parsedBarcode.weight.toFixed(
-                3
-              )} kg) added to cart`,
-              duration: 2000,
+              description: `${product.name} (1 unit) added to cart`,
+              duration: 1500,
             });
           } else {
             toast({
