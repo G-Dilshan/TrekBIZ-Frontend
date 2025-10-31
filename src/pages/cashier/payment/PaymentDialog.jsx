@@ -121,7 +121,9 @@ const PaymentDialog = ({
       });
 
       // Remove from pending queue
-      const queue = loadPendingOrders().filter((o) => o.tempId !== orderData.tempId);
+      const queue = loadPendingOrders().filter(
+        (o) => o.tempId !== orderData.tempId
+      );
       savePendingOrders(queue);
 
       if (!manualOrder) {
@@ -176,12 +178,18 @@ const PaymentDialog = ({
     }
   }, [showPaymentDialog, dispatch]);
 
-  // Keyboard navigation
+  // ✅ FIXED: Delay keyboard activation to prevent instant payment on Enter
   useEffect(() => {
     if (!showPaymentDialog) return;
 
+    let enableKeys = false;
+
+    const timer = setTimeout(() => {
+      enableKeys = true; // activate keys after delay
+    }, 250); // wait 250ms so the initial Enter from input is ignored
+
     const handleKeyDown = (e) => {
-      if (isProcessing) return;
+      if (!enableKeys || isProcessing) return;
 
       switch (e.key) {
         case "ArrowDown":
@@ -195,7 +203,9 @@ const PaymentDialog = ({
 
         case "ArrowUp":
           e.preventDefault();
-          setFocusedIndex((prev) => (prev === 0 ? paymentMethods.length - 1 : prev - 1));
+          setFocusedIndex((prev) =>
+            prev === 0 ? paymentMethods.length - 1 : prev - 1
+          );
           dispatch(setPaymentMethod(paymentMethods[focusedIndex].key));
           break;
 
@@ -215,8 +225,18 @@ const PaymentDialog = ({
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showPaymentDialog, isProcessing, focusedIndex, paymentMethod, cart, selectedCustomer]);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    showPaymentDialog,
+    isProcessing,
+    focusedIndex,
+    paymentMethod,
+    cart,
+    selectedCustomer,
+  ]);
 
   // Focus selected payment button
   useEffect(() => {
@@ -234,7 +254,7 @@ const PaymentDialog = ({
     if (!isProcessing) setShowPaymentDialog(false);
   };
 
-  // New handler for button click to always read latest state
+  // Button click handler (manual complete)
   const handleCompletePayment = () => {
     if (!validateOrder()) return;
     processPayment();
@@ -249,13 +269,16 @@ const PaymentDialog = ({
 
         <div className="space-y-6">
           <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-            <div className="text-4xl font-bold text-green-600">Rs. {total.toFixed(2)}</div>
+            <div className="text-4xl font-bold text-green-600">
+              Rs. {total.toFixed(2)}
+            </div>
             <p className="text-sm text-gray-600 mt-1">Total Amount</p>
           </div>
 
           {selectedCustomer && (
             <div className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
-              <span className="font-medium">Customer:</span> {selectedCustomer.name || selectedCustomer.email}
+              <span className="font-medium">Customer:</span>{" "}
+              {selectedCustomer.name || selectedCustomer.email}
             </div>
           )}
 
@@ -273,22 +296,35 @@ const PaymentDialog = ({
                   key={method.key}
                   ref={(el) => (buttonRefs.current[index] = el)}
                   variant={isSelected ? "default" : "outline"}
-                  className={`w-full justify-start gap-3 h-12 text-base transition-all ${isFocused ? "ring-2 ring-offset-2 ring-primary" : ""}`}
+                  className={`w-full justify-start gap-3 h-12 text-base transition-all ${
+                    isFocused ? "ring-2 ring-offset-2 ring-primary" : ""
+                  }`}
                   onClick={() => handlePaymentMethod(method.key, index)}
                   disabled={isProcessing}
                   tabIndex={isFocused ? 0 : -1}
                 >
                   {Icon && <Icon className="h-5 w-5" />}
                   <span>{method.label}</span>
-                  {isSelected && <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded">Selected</span>}
+                  {isSelected && (
+                    <span className="ml-auto text-xs bg-white/20 px-2 py-1 rounded">
+                      Selected
+                    </span>
+                  )}
                 </Button>
               );
             })}
           </div>
 
           <div className="text-xs text-gray-500 text-center space-y-1">
-            <p>Press <kbd className="px-2 py-1 bg-gray-100 rounded">Enter</kbd> to complete payment</p>
-            <p>Press <kbd className="px-2 py-1 bg-gray-100 rounded">Esc</kbd> to cancel</p>
+            <p>
+              Press{" "}
+              <kbd className="px-2 py-1 bg-gray-100 rounded">Enter</kbd> to
+              complete payment
+            </p>
+            <p>
+              Press <kbd className="px-2 py-1 bg-gray-100 rounded">Esc</kbd> to
+              cancel
+            </p>
           </div>
         </div>
 
@@ -296,12 +332,18 @@ const PaymentDialog = ({
           <Button variant="outline" onClick={handleCancel} disabled={isProcessing}>
             Cancel (Esc)
           </Button>
-          <Button onClick={handleCompletePayment} disabled={isProcessing || !paymentMethod} className="gap-2">
+          <Button
+            onClick={handleCompletePayment}
+            disabled={isProcessing || !paymentMethod}
+            className="gap-2"
+          >
             {isProcessing ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" /> Processing...
               </>
-            ) : "Complete Payment (Enter)"}
+            ) : (
+              "Complete Payment (Enter)"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
