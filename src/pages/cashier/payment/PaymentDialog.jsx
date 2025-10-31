@@ -29,8 +29,6 @@ const paymentIcons = {
   UPI: Smartphone,
 };
 
-const STORAGE_KEY = "pendingOrdersQueue";
-
 const PaymentDialog = ({
   showPaymentDialog,
   setShowPaymentDialog,
@@ -51,17 +49,6 @@ const PaymentDialog = ({
   const dispatch = useDispatch();
   const buttonRefs = useRef([]);
 
-  // Load pending orders from localStorage
-  const loadPendingOrders = () => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  };
-
-  const savePendingOrders = (queue) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
-  };
-
-  // Validate order before processing
   const validateOrder = () => {
     if (cart.length === 0) {
       toast({
@@ -93,8 +80,10 @@ const PaymentDialog = ({
     return true;
   };
 
-  const processPayment = async (manualOrder) => {
-    const orderData = manualOrder || {
+  const processPayment = async () => {
+    if (!validateOrder()) return;
+
+    const orderData = {
       tempId: uuidv4(),
       totalAmount: total,
       branchId: branch.id,
@@ -119,56 +108,18 @@ const PaymentDialog = ({
         title: "Order Created Successfully",
         description: `Order #${createdOrder.id} created.`,
       });
-
-      // Remove from pending queue
-      const queue = loadPendingOrders().filter(
-        (o) => o.tempId !== orderData.tempId
-      );
-      savePendingOrders(queue);
-
-      if (!manualOrder) {
-        setShowPaymentDialog(false);
-        setShowReceiptDialog(true);
-      }
+      setShowPaymentDialog(false);
+      setShowReceiptDialog(true);
     } catch (error) {
-      // Save to pending queue for retry
-      const queue = loadPendingOrders();
-      if (!queue.find((o) => o.tempId === orderData.tempId)) {
-        queue.push(orderData);
-        savePendingOrders(queue);
-      }
-
       toast({
-        title: !navigator.onLine ? "Offline Mode" : "Order Creation Failed",
-        description: !navigator.onLine
-          ? "Will retry automatically when online."
-          : error?.message || "Please try again.",
+        title: "Order Creation Failed",
+        description: error?.message || "Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
     }
   };
-
-  // Retry pending orders when back online
-  useEffect(() => {
-    const handleOnline = async () => {
-      const queue = loadPendingOrders();
-      if (queue.length === 0) return;
-
-      toast({
-        title: "Reconnected",
-        description: "Retrying pending orders...",
-      });
-
-      for (const order of queue) {
-        await processPayment(order);
-      }
-    };
-
-    window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
-  }, []);
 
   // Auto-select CASH on dialog open
   useEffect(() => {
@@ -178,15 +129,15 @@ const PaymentDialog = ({
     }
   }, [showPaymentDialog, dispatch]);
 
-  // ✅ FIXED: Delay keyboard activation to prevent instant payment on Enter
+  // Keyboard navigation with Enter-delay fix
   useEffect(() => {
     if (!showPaymentDialog) return;
 
     let enableKeys = false;
 
     const timer = setTimeout(() => {
-      enableKeys = true; // activate keys after delay
-    }, 250); // wait 250ms so the initial Enter from input is ignored
+      enableKeys = true;
+    }, 300); // delay to prevent instant Enter trigger
 
     const handleKeyDown = (e) => {
       if (!enableKeys || isProcessing) return;
@@ -203,15 +154,16 @@ const PaymentDialog = ({
 
         case "ArrowUp":
           e.preventDefault();
-          setFocusedIndex((prev) =>
-            prev === 0 ? paymentMethods.length - 1 : prev - 1
-          );
-          dispatch(setPaymentMethod(paymentMethods[focusedIndex].key));
+          setFocusedIndex((prev) => {
+            const newIndex = prev === 0 ? paymentMethods.length - 1 : prev - 1;
+            dispatch(setPaymentMethod(paymentMethods[newIndex].key));
+            return newIndex;
+          });
           break;
 
         case "Enter":
           e.preventDefault();
-          if (!isProcessing && validateOrder()) processPayment();
+          if (!isProcessing) processPayment();
           break;
 
         case "Escape":
@@ -225,20 +177,13 @@ const PaymentDialog = ({
     };
 
     window.addEventListener("keydown", handleKeyDown);
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [
-    showPaymentDialog,
-    isProcessing,
-    focusedIndex,
-    paymentMethod,
-    cart,
-    selectedCustomer,
-  ]);
+  }, [showPaymentDialog, isProcessing, focusedIndex, paymentMethod, cart, selectedCustomer]);
 
-  // Focus selected payment button
   useEffect(() => {
     if (buttonRefs.current[focusedIndex] && showPaymentDialog) {
       buttonRefs.current[focusedIndex]?.focus();
@@ -252,12 +197,6 @@ const PaymentDialog = ({
 
   const handleCancel = () => {
     if (!isProcessing) setShowPaymentDialog(false);
-  };
-
-  // Button click handler (manual complete)
-  const handleCompletePayment = () => {
-    if (!validateOrder()) return;
-    processPayment();
   };
 
   return (
@@ -317,8 +256,7 @@ const PaymentDialog = ({
 
           <div className="text-xs text-gray-500 text-center space-y-1">
             <p>
-              Press{" "}
-              <kbd className="px-2 py-1 bg-gray-100 rounded">Enter</kbd> to
+              Press <kbd className="px-2 py-1 bg-gray-100 rounded">Enter</kbd> to
               complete payment
             </p>
             <p>
@@ -333,7 +271,7 @@ const PaymentDialog = ({
             Cancel (Esc)
           </Button>
           <Button
-            onClick={handleCompletePayment}
+            onClick={processPayment}
             disabled={isProcessing || !paymentMethod}
             className="gap-2"
           >
