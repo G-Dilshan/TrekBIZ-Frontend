@@ -21,15 +21,12 @@ const ProductSection = ({ searchInputRef }) => {
   const { inventories } = useSelector((state) => state.inventory);
   const { products, searchResults, loading, error: productsError } =
     useSelector((state) => state.product);
-
-  // 🆕 Payment success flag from your order slice
   const { paymentSuccess } = useSelector((state) => state.order || {});
+  const { toast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [isBarcodeMode, setIsBarcodeMode] = useState(false);
-  const { toast } = useToast();
 
-  // ✅ Helper to filter products that exist in inventory
   const filterProductsByInventory = (productList) => {
     if (!inventories || inventories.length === 0) return productList;
     const inventoryProductIds = inventories.map(
@@ -38,7 +35,6 @@ const ProductSection = ({ searchInputRef }) => {
     return productList.filter((p) => inventoryProductIds.includes(p.id));
   };
 
-  // ✅ Updated getDisplayProducts
   const getDisplayProducts = () => {
     let baseList =
       searchTerm.trim() && searchResults.length > 0
@@ -47,7 +43,6 @@ const ProductSection = ({ searchInputRef }) => {
     return filterProductsByInventory(baseList);
   };
 
-  // ✅ Fetch branch, products, and inventory initially
   useEffect(() => {
     const fetchData = async () => {
       if (branch?.storeId && localStorage.getItem("jwt")) {
@@ -87,7 +82,6 @@ const ProductSection = ({ searchInputRef }) => {
     fetchData();
   }, [dispatch, branch, userProfile, toast]);
 
-  // ✅ Auto-refresh inventory after successful payment
   useEffect(() => {
     if (paymentSuccess && branch?.id) {
       dispatch(getInventoryByBranch(branch.id))
@@ -98,84 +92,51 @@ const ProductSection = ({ searchInputRef }) => {
             description: "Stock levels refreshed after payment.",
           });
         })
-        .catch((error) => {
-          console.error("Failed to refresh inventory:", error);
-        });
-      // Optionally reset payment status after refresh
-      // dispatch(resetPaymentStatus());
+        .catch((error) => console.error("Failed to refresh inventory:", error));
     }
   }, [paymentSuccess, branch, dispatch, toast]);
 
-  // ✅ Enhanced barcode parser with 4-digit support
   const parseScaleBarcode = (barcode) => {
     const cleanBarcode = barcode.trim();
-    
-    // 🆕 4-digit product code (simple SKU)
-    if (cleanBarcode.length === 4 && /^\d+$/.test(cleanBarcode)) {
-      return {
-        canParseAsScale: true,
-        productCode: cleanBarcode,
-        weight: 1, // Default quantity for 4-digit codes
-        rawBarcode: cleanBarcode,
-        isFourDigitCode: true
-      };
-    }
-    
-    // Existing 10-digit scale barcode
     if (cleanBarcode.length === 10 && /^\d+$/.test(cleanBarcode)) {
       const productCode = cleanBarcode.substring(0, 5);
       const weightValue = cleanBarcode.substring(5);
       const weight = parseInt(weightValue) / 1000;
       if (weight > 0 && weight < 100) {
-        return {
-          canParseAsScale: true,
-          productCode,
-          weight,
-          rawBarcode: cleanBarcode,
-        };
+        return { canParseAsScale: true, productCode, weight };
       }
     }
-    
-    // Existing 13-digit scale barcode
     if (cleanBarcode.length === 13 && cleanBarcode.startsWith("2")) {
       const productCode = cleanBarcode.substring(2, 7);
       const weightValue = cleanBarcode.substring(7, 12);
       const weight = parseInt(weightValue) / 1000;
       if (weight > 0 && weight < 100) {
-        return {
-          canParseAsScale: true,
-          productCode,
-          weight,
-          rawBarcode: cleanBarcode,
-        };
+        return { canParseAsScale: true, productCode, weight };
       }
     }
-    
-    return { 
-      canParseAsScale: false, 
-      productCode: cleanBarcode, 
-      weight: null 
-    };
+    return { canParseAsScale: false, productCode: cleanBarcode, weight: null };
   };
 
-  // ✅ Enhanced barcode search with 4-digit support
+  // ✅ Updated: Exact SKU/barcode match
   const handleBarcodeSearch = useCallback(
     async (barcode) => {
       if (!barcode.trim() || !branch?.storeId || !localStorage.getItem("jwt"))
         return;
 
       try {
-        // First try exact barcode match
-        const fullBarcodeResult = await dispatch(
+        const results = await dispatch(
           searchProducts({ query: barcode.trim(), storeId: branch.storeId })
         ).unwrap();
 
-        if (fullBarcodeResult?.length > 0) {
-          const product = fullBarcodeResult[0];
-          dispatch(addToCart(product));
+        const exactMatch = results.find(
+          (p) => p.sku === barcode.trim() || p.barcode === barcode.trim()
+        );
+
+        if (exactMatch) {
+          dispatch(addToCart(exactMatch));
           toast({
             title: "Added to cart",
-            description: `${product.name} (1 unit) added to cart`,
+            description: `${exactMatch.name} (1 unit) added to cart`,
             duration: 1500,
           });
           setSearchTerm("");
@@ -184,59 +145,35 @@ const ProductSection = ({ searchInputRef }) => {
           return;
         }
 
-        // Try parsing as scale barcode or 4-digit code
-        const parsedBarcode = parseScaleBarcode(barcode);
-        
-        if (parsedBarcode.canParseAsScale) {
-          const scaleResult = await dispatch(
-            searchProducts({
-              query: parsedBarcode.productCode,
-              storeId: branch.storeId,
-            })
+        const parsed = parseScaleBarcode(barcode);
+        if (parsed.canParseAsScale) {
+          const scaleResults = await dispatch(
+            searchProducts({ query: parsed.productCode, storeId: branch.storeId })
           ).unwrap();
 
-          if (scaleResult?.length === 1) {
-            const product = scaleResult[0];
-            
-            // 🆕 Handle 4-digit code differently
-            if (parsedBarcode.isFourDigitCode) {
-              // For 4-digit codes, add as regular product (quantity 1)
-              dispatch(addToCart(product));
-              toast({
-                title: "Added to cart",
-                description: `${product.name} (1 unit) added to cart`,
-                duration: 1500,
-              });
-            } else {
-              // For scale barcodes, add with weight
-              const productWithWeight = {
-                ...product,
-                scannedWeight: parsedBarcode.weight,
-                quantity: parsedBarcode.weight,
-                isWeightedItem: true,
-              };
-              dispatch(addToCart(productWithWeight));
-              toast({
-                title: "Added to cart",
-                description: `${product.name} (${parsedBarcode.weight.toFixed(
-                  3
-                )} kg) added to cart`,
-                duration: 2000,
-              });
-            }
-          } else if (scaleResult?.length > 1) {
-            // Multiple products found with same code - show selection or take first
-            const product = scaleResult[0];
-            dispatch(addToCart(product));
+          const exactScaleMatch = scaleResults.find(
+            (p) => p.sku === parsed.productCode || p.barcode === parsed.productCode
+          );
+
+          if (exactScaleMatch) {
+            const productWithWeight = {
+              ...exactScaleMatch,
+              scannedWeight: parsed.weight,
+              quantity: parsed.weight,
+              isWeightedItem: true,
+            };
+            dispatch(addToCart(productWithWeight));
             toast({
               title: "Added to cart",
-              description: `${product.name} (1 unit) added to cart`,
-              duration: 1500,
+              description: `${exactScaleMatch.name} (${parsed.weight.toFixed(
+                3
+              )} kg) added to cart`,
+              duration: 2000,
             });
           } else {
             toast({
               title: "Product Not Found",
-              description: `No product found with code: ${parsedBarcode.productCode}`,
+              description: `No product found with code: ${parsed.productCode}`,
               variant: "destructive",
             });
           }
@@ -264,7 +201,6 @@ const ProductSection = ({ searchInputRef }) => {
     [dispatch, branch, toast, searchInputRef]
   );
 
-  // ✅ Debounced text search
   const debouncedSearch = useCallback(
     (() => {
       let timeoutId;
@@ -326,7 +262,6 @@ const ProductSection = ({ searchInputRef }) => {
     }
   }, [productsError, toast]);
 
-  // ✅ Render section
   return (
     <div className="w-2/5 flex flex-col bg-card border-r">
       <div className="p-4 border-b bg-muted">
