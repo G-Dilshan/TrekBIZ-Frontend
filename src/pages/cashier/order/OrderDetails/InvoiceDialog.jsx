@@ -15,7 +15,12 @@ import { useSelector, useDispatch } from "react-redux";
 import OrderDetails from "./OrderDetails";
 import { resetOrder } from "../../../../Redux Toolkit/features/cart/cartSlice";
 
-const InvoiceDialog = ({ showInvoiceDialog, setShowInvoiceDialog, paidAmount, balance }) => {
+const InvoiceDialog = ({
+  showInvoiceDialog,
+  setShowInvoiceDialog,
+  paidAmount,
+  balance,
+}) => {
   const { selectedOrder } = useSelector((state) => state.order);
   const { toast } = useToast();
   const dispatch = useDispatch();
@@ -66,17 +71,20 @@ const InvoiceDialog = ({ showInvoiceDialog, setShowInvoiceDialog, paidAmount, ba
       return;
     }
 
-    setShowInvoiceDialog(false);
+    // Reset order and close dialog
     dispatch(resetOrder());
+    setShowInvoiceDialog(false);
+
     toast({
       title: "Order Completed",
       description: "You can now start a new order",
     });
 
-    //window.location.reload();
+    // Reset printed state for next order
+    setTimeout(() => setIsPrinted(false), 200);
   };
 
-  // Handle Enter key press
+  // Listen for Enter key to start new order
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "Enter" && isPrinted) {
@@ -85,17 +93,11 @@ const InvoiceDialog = ({ showInvoiceDialog, setShowInvoiceDialog, paidAmount, ba
     };
 
     window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isPrinted]); // Run effect whenever isPrinted changes
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isPrinted]);
 
   return (
-    <Dialog
-      open={showInvoiceDialog}
-      onOpenChange={() => {}}
-    >
+    <Dialog open={showInvoiceDialog} onOpenChange={() => {}}>
       {selectedOrder && (
         <DialogContent className="w-5xl">
           <DialogHeader>
@@ -109,7 +111,7 @@ const InvoiceDialog = ({ showInvoiceDialog, setShowInvoiceDialog, paidAmount, ba
               <PrinterIcon className="h-4 w-4 mr-2" />
               Print Invoice
             </Button>
-            
+
             <Button variant="secondary" onClick={handleDownloadPDF}>
               <Download className="h-4 w-4 mr-2" />
               Download PDF
